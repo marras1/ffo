@@ -1,0 +1,14 @@
+:root { font-family: Inter, system-ui, sans-serif; color-scheme: dark; }
+body { margin: 0; background: #0f172a; color: #e2e8f0; }
+.app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.sidebar { background: #111827; padding: 20px; border-right: 1px solid #1f2937; }
+.content { padding: 24px; }
+.card { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+input, select, button { background: #0b1220; color: #e2e8f0; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px; }
+button { cursor: pointer; background: #2563eb; border-color: #2563eb; }
+button.ghost { background: transparent; border: 1px solid #334155; }
+ul { padding-left: 18px; }
+.hidden { display: none; }
+#authMsg { color: #93c5fd; }
