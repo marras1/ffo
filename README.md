@@ -1,26 +1,42 @@
-# Family Finance Planner
+# Finance Hub (ASP.NET Core 8)
 
-Built from `docs/spec.md`.
+A modernized Revolut-like starter backend + lightweight web UI built with:
 
-## CLI report
+- ASP.NET Core 8 Web API
+- Entity Framework Core 8
+- PostgreSQL (Npgsql provider)
+- JWT Authentication
+- Swagger / OpenAPI
+
+## Project structure
+
+- `FinanceApi/Program.cs` – service registration, JWT auth, Swagger, static file hosting
+- `FinanceApi/Data/FinanceDbContext.cs` – EF Core DbContext
+- `FinanceApi/Models/*` – entities (`User`, `Account`, `Transaction`)
+- `FinanceApi/Controllers/*` – auth/accounts/transactions APIs
+- `FinanceApi/Services/TokenService.cs` – JWT token generation
+- `FinanceApi/wwwroot/*` – minimal modern single-page UI (auth + accounts + transactions)
+
+## Run
+
+1. Install .NET 8 SDK and PostgreSQL.
+2. Set `FinanceApi/appsettings.json` connection string and JWT secret.
+3. From `FinanceApi/`:
 
 ```bash
-PYTHONPATH=src python -m family_finance.cli path/to/input.json
+dotnet restore
+dotnet ef database update
+dotnet run
 ```
 
-## Web app (registration + authorization)
+4. Open:
+- UI: `https://localhost:5001` (or printed URL)
+- Swagger: `https://localhost:5001/swagger`
 
-```bash
-PYTHONPATH=src python -m family_finance.web
-```
+## API summary
 
-Then open `http://localhost:8000` to register and log in. The dashboard now includes:
-- account management (create/list accounts with balances)
-- transaction management for expenses and income (e.g., salary)
-- JSON snapshot report generation
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET/POST /api/accounts` (JWT)
+- `GET/POST /api/transactions` (JWT)
 
-## Test
-
-```bash
-PYTHONPATH=src pytest
-```
