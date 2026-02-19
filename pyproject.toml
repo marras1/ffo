@@ -10,6 +10,7 @@ requires-python = ">=3.10"
 
 [project.scripts]
 family-finance = "family_finance.cli:main"
+family-finance-web = "family_finance.web:run"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

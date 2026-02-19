@@ -1,7 +1,7 @@
 # Family Finance Planner Specification
 
 ## Goal
-Build a lightweight planner that models a family household with multiple users, multiple accounts, a shared budget, and segmented asset allocations.
+Build a lightweight planner that models a family household with multiple users, multiple accounts, a shared budget, segmented asset allocations, and basic web-based registration/authorization.
 
 ## Functional requirements
 1. Ingest household data from JSON.
@@ -20,12 +20,16 @@ Build a lightweight planner that models a family household with multiple users, 
    - household summary
    - budget summary
    - allocation summary sorted by largest absolute drift
+6. Provide a web app that supports:
+   - user registration
+   - login/logout authorization via session cookie
+   - authenticated access to a dashboard that can generate reports from pasted JSON
 
 ## Non-functional requirements
 - Pure Python 3.10+.
 - No external dependencies.
-- Include unit tests for calculations and report generation.
-- Provide a small executable CLI entrypoint.
+- Include unit tests for calculations, authentication, and core web flow.
+- Provide executable CLI and web entrypoints.
 
 ## Input shape
 JSON object with keys:
