@@ -18,6 +18,9 @@
    - list own transactions
    - auto-update account balance after transaction writes
 5. Minimal modern web UI for auth + account/transaction operations.
+6. Startup resiliency:
+   - database schema auto-initialization (`Migrate` if migrations exist, `EnsureCreated` otherwise)
+   - configurable HTTPS redirection for environments without TLS termination.
 
 ## Non-functional
 - Clear API-first architecture with EF Core data model.
