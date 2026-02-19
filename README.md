@@ -172,9 +172,21 @@ If you hit errors like `relation "Users" does not exist`:
    WHERE lower(table_name) IN ('users','accounts','transactions');
    ```
 4. If migration history is inconsistent, recreate local DB (dev only) and rerun migrations.
+5. Ensure PostgreSQL `search_path` resolves to the schema where app tables are created (default `public`).
 
 The startup code now includes defensive checks:
 - migrate/ensure-created fallback
 - case-insensitive `Users` table existence check
-- skip admin seeding safely if `Users` is still missing
+- fail-fast startup with explicit error if `Users` is still missing (prevents hidden runtime request crashes)
+
+
+## Why this keeps happening (root cause)
+
+`EnsureCreated()` in EF Core only creates schema for a clean database scenario.
+If your database already contains unrelated tables (or partial schema from earlier runs), `EnsureCreated()` may not create missing model tables like `Users`.
+
+That leads to runtime SQL failures such as:
+- `42P01: relation "Users" does not exist`
+
+The startup now performs additional guarded steps and aborts startup if `Users` is still missing, so failures happen early and clearly instead of during login/register requests.
 

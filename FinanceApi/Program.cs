@@ -4,6 +4,8 @@ using FinanceApi.Models;
 using FinanceApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -94,8 +96,8 @@ using (var scope = app.Services.CreateScope())
     var usersTableExists = TableExists(db, "Users");
     if (!usersTableExists)
     {
-        // Second chance initialization for edge cases where migrate path completed without creating domain tables.
-        db.Database.EnsureCreated();
+        logger.LogWarning("Users table missing after initial setup; attempting model table creation.");
+        EnsureModelTables(db, logger);
         usersTableExists = TableExists(db, "Users");
     }
 
@@ -131,7 +133,8 @@ using (var scope = app.Services.CreateScope())
     }
     else
     {
-        logger.LogWarning("Users table is still missing after initialization; admin seeding skipped.");
+        logger.LogError("Users table is still missing after all initialization attempts. Check DB/schema configuration and migrations.");
+        throw new InvalidOperationException("Startup aborted: required table 'Users' was not created.");
     }
 }
 
@@ -158,11 +161,29 @@ app.Run();
 
 static bool TableExists(FinanceDbContext db, string tableName)
 {
-    // Handles case sensitivity from quoted table names by comparing lowercase.
     return db.Database
         .SqlQueryRaw<bool>(
             "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND lower(table_name) = lower({0}));",
             tableName)
         .AsEnumerable()
         .FirstOrDefault();
+}
+
+static void EnsureModelTables(FinanceDbContext db, ILogger logger)
+{
+    try
+    {
+        var creator = db.GetService<IRelationalDatabaseCreator>();
+        if (!creator.Exists())
+        {
+            creator.Create();
+        }
+
+        creator.CreateTables();
+    }
+    catch (Exception ex)
+    {
+        // Safe to continue; this can fail if some tables already exist.
+        logger.LogWarning(ex, "CreateTables() attempt failed (possibly due to partial existing schema). Continuing with checks.");
+    }
 }
