@@ -82,7 +82,25 @@ using (var scope = app.Services.CreateScope())
     }
 
     // Backward-compatible patch for existing DBs created before IsAdmin existed.
-    db.Database.ExecuteSqlRaw("ALTER TABLE \"Users\" ADD COLUMN IF NOT EXISTS \"IsAdmin\" boolean NOT NULL DEFAULT FALSE;");
+    // Guarded so it does not fail when the Users table has not been created yet.
+    var usersTableExists = false;
+    using (var conn = db.Database.GetDbConnection())
+    {
+        if (conn.State != System.Data.ConnectionState.Open)
+        {
+            conn.Open();
+        }
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'Users');";
+        var result = cmd.ExecuteScalar();
+        usersTableExists = result is bool b && b;
+    }
+
+    if (usersTableExists)
+    {
+        db.Database.ExecuteSqlRaw("ALTER TABLE \"Users\" ADD COLUMN IF NOT EXISTS \"IsAdmin\" boolean NOT NULL DEFAULT FALSE;");
+    }
 
     var adminEmail = app.Configuration["AdminUser:Email"]?.Trim().ToLowerInvariant();
     var adminPassword = app.Configuration["AdminUser:Password"];
