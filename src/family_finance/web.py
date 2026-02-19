@@ -6,7 +6,7 @@ from pathlib import Path
 from urllib.parse import parse_qs
 from wsgiref.simple_server import make_server
 
-from .auth import AuthStore
+from .auth import AuthStore, User
 from .planner import load_snapshot_from_json, render_report
 
 
@@ -44,10 +44,44 @@ class WebApp:
                 self.auth.logout(token)
             headers = [("Set-Cookie", "session=; Max-Age=0; Path=/")]
             return self._redirect(start_response, "/", extra_headers=headers)
+
         if path == "/dashboard":
             if user is None:
                 return self._redirect(start_response, "/login")
-            return self._response(start_response, self._dashboard_html(user.username))
+            return self._response(start_response, self._dashboard_html(user))
+
+        if path == "/accounts" and method == "POST":
+            if user is None:
+                return self._redirect(start_response, "/login")
+            params = _post_params(environ)
+            name = params.get("name", [""])[0]
+            account_type = params.get("account_type", [""])[0]
+            balance_raw = params.get("opening_balance", ["0"])[0]
+            try:
+                opening_balance = float(balance_raw)
+            except ValueError:
+                return self._response(start_response, self._dashboard_html(user, "Opening balance must be numeric."))
+            ok = self.auth.create_account(user.id, name, account_type, opening_balance)
+            if not ok:
+                return self._response(start_response, self._dashboard_html(user, "Could not create account."))
+            return self._redirect(start_response, "/dashboard")
+
+        if path == "/transactions" and method == "POST":
+            if user is None:
+                return self._redirect(start_response, "/login")
+            params = _post_params(environ)
+            kind = params.get("kind", [""])[0]
+            description = params.get("description", [""])[0]
+            try:
+                account_id = int(params.get("account_id", ["0"])[0])
+                amount = float(params.get("amount", ["0"])[0])
+            except ValueError:
+                return self._response(start_response, self._dashboard_html(user, "Invalid account or amount."))
+            ok = self.auth.create_transaction(user.id, account_id, kind, amount, description)
+            if not ok:
+                return self._response(start_response, self._dashboard_html(user, "Could not create transaction."))
+            return self._redirect(start_response, "/dashboard")
+
         if path == "/report" and method == "POST":
             if user is None:
                 return self._redirect(start_response, "/login")
@@ -56,8 +90,8 @@ class WebApp:
             try:
                 report = render_report(load_snapshot_from_json(snapshot_raw))
             except Exception as exc:  # noqa: BLE001
-                return self._response(start_response, self._dashboard_html(user.username, f"Invalid JSON snapshot: {exc}"))
-            return self._response(start_response, self._dashboard_html(user.username, report=report))
+                return self._response(start_response, self._dashboard_html(user, f"Invalid JSON snapshot: {exc}"))
+            return self._response(start_response, self._dashboard_html(user, report=report))
 
         start_response("404 Not Found", [("Content-Type", "text/plain; charset=utf-8")])
         return [b"Not Found"]
@@ -74,12 +108,12 @@ class WebApp:
         start_response("302 Found", headers)
         return [b""]
 
-    def _home_html(self, user) -> str:
+    def _home_html(self, user: User | None) -> str:
         auth_link = '<a href="/dashboard">Dashboard</a>' if user else '<a href="/login">Login</a> | <a href="/register">Register</a>'
         return f"""
         <html><body>
           <h1>Family Finance Planner</h1>
-          <p>Web access is enabled with registration and login.</p>
+          <p>Manage accounts, expenses, and salary transactions from the dashboard.</p>
           <p>{auth_link}</p>
         </body></html>
         """
@@ -114,15 +148,58 @@ class WebApp:
         </body></html>
         """
 
-    def _dashboard_html(self, username: str, message: str = "", report: str = "") -> str:
+    def _dashboard_html(self, user: User, message: str = "", report: str = "") -> str:
+        accounts = self.auth.list_accounts(user.id)
+        transactions = self.auth.list_transactions(user.id)
         msg = f"<p style='color:red'>{html.escape(message)}</p>" if message else ""
         rendered = f"<pre>{html.escape(report)}</pre>" if report else ""
+
+        accounts_list = "".join(
+            f"<li>#{a.id} {html.escape(a.name)} ({html.escape(a.account_type)}): ${a.balance:,.2f}</li>" for a in accounts
+        ) or "<li>No accounts yet.</li>"
+
+        tx_list = "".join(
+            f"<li>#{t.id} [{html.escape(t.kind)}] account={t.account_id} amount=${t.amount:,.2f} - {html.escape(t.description)}</li>"
+            for t in transactions
+        ) or "<li>No transactions yet.</li>"
+
+        account_options = "".join(
+            f"<option value='{a.id}'>#{a.id} {html.escape(a.name)}</option>" for a in accounts
+        )
+
         sample_json = '{"household":{"id":"fam","name":"My Family","members":[]},"accounts":[],"budget":{"period":"2026-02","shared":{"required":0,"flexible":0},"personal":{}},"asset_segments":[]}'
+
         return f"""
         <html><body>
           <h1>Dashboard</h1>
-          <p>Welcome, {html.escape(username)}. <a href="/logout">Logout</a></p>
+          <p>Welcome, {html.escape(user.username)}. <a href="/logout">Logout</a></p>
           {msg}
+
+          <h2>Accounts</h2>
+          <ul>{accounts_list}</ul>
+          <form method="post" action="/accounts">
+            <label>Name <input name="name" /></label>
+            <label>Type <input name="account_type" placeholder="checking/savings/brokerage" /></label>
+            <label>Opening balance <input name="opening_balance" value="0" /></label>
+            <button type="submit">Add account</button>
+          </form>
+
+          <h2>Transactions (expense/salary)</h2>
+          <ul>{tx_list}</ul>
+          <form method="post" action="/transactions">
+            <label>Account <select name="account_id">{account_options}</select></label>
+            <label>Kind
+              <select name="kind">
+                <option value="expense">expense</option>
+                <option value="income">income (salary)</option>
+              </select>
+            </label>
+            <label>Amount <input name="amount" value="0" /></label>
+            <label>Description <input name="description" placeholder="groceries / monthly salary" /></label>
+            <button type="submit">Add transaction</button>
+          </form>
+
+          <h2>Planner report from JSON snapshot</h2>
           <form method="post" action="/report">
             <label>Finance snapshot JSON</label><br/>
             <textarea name="snapshot_json" rows="12" cols="100">{html.escape(sample_json)}</textarea><br/>

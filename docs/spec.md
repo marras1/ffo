@@ -23,7 +23,10 @@ Build a lightweight planner that models a family household with multiple users, 
 6. Provide a web app that supports:
    - user registration
    - login/logout authorization via session cookie
-   - authenticated access to a dashboard that can generate reports from pasted JSON
+   - authenticated dashboard access
+   - account management UI (add/list accounts)
+   - transaction management UI (record income/expense transactions)
+   - dashboard report generation from pasted JSON
 
 ## Non-functional requirements
 - Pure Python 3.10+.
