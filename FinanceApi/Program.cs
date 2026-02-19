@@ -67,6 +67,21 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+// Ensure database schema exists at startup.
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
+    var hasMigrations = db.Database.GetMigrations().Any();
+    if (hasMigrations)
+    {
+        db.Database.Migrate();
+    }
+    else
+    {
+        db.Database.EnsureCreated();
+    }
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -75,7 +90,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
-app.UseHttpsRedirection();
+
+var useHttpsRedirection = app.Configuration.GetValue<bool?>("UseHttpsRedirection") ?? app.Environment.IsProduction();
+if (useHttpsRedirection)
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
