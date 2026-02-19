@@ -116,3 +116,42 @@ PWA icons are stored as text-based SVG files:
 
 - `FinanceApi/wwwroot/icon-192.svg`
 - `FinanceApi/wwwroot/icon-512.svg`
+
+## Additional validation steps (recommended)
+
+Apart from:
+
+```bash
+dotnet restore
+dotnet ef database update
+dotnet run
+```
+
+also run:
+
+1. **Build check**
+```bash
+dotnet build
+```
+
+2. **Smoke API checks** (replace token with real JWT)
+```bash
+# health of startup/auth path
+curl -i http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@finance.local","password":"Admin123!ChangeMe"}'
+
+# swagger availability
+curl -I http://localhost:5000/swagger
+```
+
+3. **Database sanity** (inside PostgreSQL)
+```sql
+SELECT table_name FROM information_schema.tables WHERE table_schema='public';
+SELECT COUNT(*) FROM "Users";
+```
+
+4. **PWA check in browser**
+- Open DevTools → Application → Manifest/Service Workers
+- Confirm manifest loads and service worker is active.
+
