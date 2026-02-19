@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111827" />
+  <title>Finance Hub</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <h1>Finance Hub</h1>
+      <p>Revolut-like starter</p>
+      <button id="logoutBtn" class="ghost">Logout</button>
+    </aside>
+
+    <main class="content">
+      <section id="authSection" class="card">
+        <h2>Sign in / Register</h2>
+        <div class="row">
+          <input id="fullName" placeholder="Full name (register)" />
+          <input id="email" placeholder="Email" />
+          <input id="password" type="password" placeholder="Password" />
+        </div>
+        <div class="row">
+          <button id="registerBtn">Register</button>
+          <button id="loginBtn">Login</button>
+        </div>
+        <p id="authMsg"></p>
+      </section>
+
+      <section id="dashboard" class="hidden">
+        <div class="grid">
+          <div class="card">
+            <h3>Accounts</h3>
+            <div class="row">
+              <input id="accountName" placeholder="Account name" />
+              <input id="accountType" placeholder="Type (checking/savings)" />
+              <input id="openingBalance" type="number" step="0.01" placeholder="Opening balance" />
+            </div>
+            <button id="addAccountBtn">Add account</button>
+            <ul id="accountsList"></ul>
+          </div>
+
+          <div class="card">
+            <h3>Transactions</h3>
+            <div class="row">
+              <select id="accountSelect"></select>
+              <select id="txType">
+                <option value="expense">expense</option>
+                <option value="income">income</option>
+              </select>
+              <input id="txCategory" placeholder="Category" />
+              <input id="txAmount" type="number" step="0.01" placeholder="Amount" />
+            </div>
+            <input id="txDescription" placeholder="Description (salary, groceries...)" />
+            <button id="addTxBtn">Add transaction</button>
+            <ul id="txList"></ul>
+          </div>
+        </div>
+
+        <section id="adminPanel" class="card hidden">
+          <h3>Admin panel</h3>
+          <p>Manage users, account balances, and audit transactions.</p>
+
+          <h4>Users</h4>
+          <ul id="adminUsers"></ul>
+
+          <h4>All Accounts</h4>
+          <ul id="adminAccounts"></ul>
+
+          <h4>All Transactions</h4>
+          <ul id="adminTransactions"></ul>
+        </section>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
