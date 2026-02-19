@@ -71,51 +71,67 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
-    var hasMigrations = db.Database.GetMigrations().Any();
-    if (hasMigrations)
+    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+
+    try
     {
-        db.Database.Migrate();
+        var hasMigrations = db.Database.GetMigrations().Any();
+        if (hasMigrations)
+        {
+            db.Database.Migrate();
+        }
+        else
+        {
+            db.Database.EnsureCreated();
+        }
     }
-    else
+    catch (Exception ex)
     {
+        logger.LogWarning(ex, "Migration/initialization attempt failed; retrying with EnsureCreated.");
         db.Database.EnsureCreated();
     }
 
-    // Backward-compatible patch for existing DBs created before IsAdmin existed.
-    // Guarded so it does not fail when the Users table has not been created yet.
-    var usersTableExists = db.Database
-        .SqlQueryRaw<bool>("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'Users');")
-        .AsEnumerable()
-        .FirstOrDefault();
+    var usersTableExists = TableExists(db, "Users");
+    if (!usersTableExists)
+    {
+        // Second chance initialization for edge cases where migrate path completed without creating domain tables.
+        db.Database.EnsureCreated();
+        usersTableExists = TableExists(db, "Users");
+    }
 
     if (usersTableExists)
     {
+        // Backward-compatible patch for existing DBs created before IsAdmin existed.
         db.Database.ExecuteSqlRaw("ALTER TABLE \"Users\" ADD COLUMN IF NOT EXISTS \"IsAdmin\" boolean NOT NULL DEFAULT FALSE;");
-    }
 
-    var adminEmail = app.Configuration["AdminUser:Email"]?.Trim().ToLowerInvariant();
-    var adminPassword = app.Configuration["AdminUser:Password"];
-    var adminFullName = app.Configuration["AdminUser:FullName"] ?? "System Admin";
+        var adminEmail = app.Configuration["AdminUser:Email"]?.Trim().ToLowerInvariant();
+        var adminPassword = app.Configuration["AdminUser:Password"];
+        var adminFullName = app.Configuration["AdminUser:FullName"] ?? "System Admin";
 
-    if (!string.IsNullOrWhiteSpace(adminEmail) && !string.IsNullOrWhiteSpace(adminPassword))
-    {
-        var admin = db.Users.SingleOrDefault(x => x.Email == adminEmail);
-        if (admin is null)
+        if (!string.IsNullOrWhiteSpace(adminEmail) && !string.IsNullOrWhiteSpace(adminPassword))
         {
-            db.Users.Add(new User
+            var admin = db.Users.SingleOrDefault(x => x.Email == adminEmail);
+            if (admin is null)
             {
-                FullName = adminFullName,
-                Email = adminEmail,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword),
-                IsAdmin = true
-            });
-            db.SaveChanges();
+                db.Users.Add(new User
+                {
+                    FullName = adminFullName,
+                    Email = adminEmail,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword),
+                    IsAdmin = true
+                });
+                db.SaveChanges();
+            }
+            else if (!admin.IsAdmin)
+            {
+                admin.IsAdmin = true;
+                db.SaveChanges();
+            }
         }
-        else if (!admin.IsAdmin)
-        {
-            admin.IsAdmin = true;
-            db.SaveChanges();
-        }
+    }
+    else
+    {
+        logger.LogWarning("Users table is still missing after initialization; admin seeding skipped.");
     }
 }
 
@@ -139,3 +155,14 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static bool TableExists(FinanceDbContext db, string tableName)
+{
+    // Handles case sensitivity from quoted table names by comparing lowercase.
+    return db.Database
+        .SqlQueryRaw<bool>(
+            "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND lower(table_name) = lower({0}));",
+            tableName)
+        .AsEnumerable()
+        .FirstOrDefault();
+}

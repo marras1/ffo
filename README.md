@@ -155,3 +155,26 @@ SELECT COUNT(*) FROM "Users";
 - Open DevTools → Application → Manifest/Service Workers
 - Confirm manifest loads and service worker is active.
 
+
+## Troubleshooting startup errors
+
+If you hit errors like `relation "Users" does not exist`:
+
+1. Ensure connection string points to the DB you expect.
+2. Run:
+   ```bash
+   dotnet ef database update
+   ```
+3. Verify schema exists in PostgreSQL:
+   ```sql
+   SELECT table_schema, table_name
+   FROM information_schema.tables
+   WHERE lower(table_name) IN ('users','accounts','transactions');
+   ```
+4. If migration history is inconsistent, recreate local DB (dev only) and rerun migrations.
+
+The startup code now includes defensive checks:
+- migrate/ensure-created fallback
+- case-insensitive `Users` table existence check
+- skip admin seeding safely if `Users` is still missing
+
