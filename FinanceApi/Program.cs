@@ -1,5 +1,6 @@
 using System.Text;
 using FinanceApi.Data;
+using FinanceApi.Models;
 using FinanceApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -67,7 +68,6 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Ensure database schema exists at startup.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
@@ -79,6 +79,34 @@ using (var scope = app.Services.CreateScope())
     else
     {
         db.Database.EnsureCreated();
+    }
+
+    // Backward-compatible patch for existing DBs created before IsAdmin existed.
+    db.Database.ExecuteSqlRaw("ALTER TABLE \"Users\" ADD COLUMN IF NOT EXISTS \"IsAdmin\" boolean NOT NULL DEFAULT FALSE;");
+
+    var adminEmail = app.Configuration["AdminUser:Email"]?.Trim().ToLowerInvariant();
+    var adminPassword = app.Configuration["AdminUser:Password"];
+    var adminFullName = app.Configuration["AdminUser:FullName"] ?? "System Admin";
+
+    if (!string.IsNullOrWhiteSpace(adminEmail) && !string.IsNullOrWhiteSpace(adminPassword))
+    {
+        var admin = db.Users.SingleOrDefault(x => x.Email == adminEmail);
+        if (admin is null)
+        {
+            db.Users.Add(new User
+            {
+                FullName = adminFullName,
+                Email = adminEmail,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword),
+                IsAdmin = true
+            });
+            db.SaveChanges();
+        }
+        else if (!admin.IsAdmin)
+        {
+            admin.IsAdmin = true;
+            db.SaveChanges();
+        }
     }
 }
 

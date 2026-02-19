@@ -4,8 +4,9 @@
 - ASP.NET Core 8 Web API
 - Entity Framework Core 8
 - PostgreSQL / SQL Server capable (implemented with PostgreSQL provider)
-- JWT Bearer Authentication
+- JWT Bearer Authentication with role claims
 - Swagger/OpenAPI
+- PWA frontend (manifest + service worker)
 
 ## Functional scope
 1. User registration/login with secure password hashing.
@@ -17,12 +18,12 @@
    - create income/expense transactions
    - list own transactions
    - auto-update account balance after transaction writes
-5. Minimal modern web UI for auth + account/transaction operations.
+5. Admin management:
+   - seeded startup admin user
+   - user administration (grant/revoke admin)
+   - account administration (set balances)
+   - transaction audit visibility
 6. Startup resiliency:
    - database schema auto-initialization (`Migrate` if migrations exist, `EnsureCreated` otherwise)
+   - backward-compatible `Users.IsAdmin` patch on startup
    - configurable HTTPS redirection for environments without TLS termination.
-
-## Non-functional
-- Clear API-first architecture with EF Core data model.
-- Swagger enabled in development.
-- Static SPA-like UI served by ASP.NET app.

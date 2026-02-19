@@ -24,14 +24,15 @@ public class AuthController(FinanceDbContext db, ITokenService tokenService) : C
         {
             FullName = request.FullName.Trim(),
             Email = email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            IsAdmin = false
         };
 
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
         var token = tokenService.CreateToken(user);
-        return Ok(new AuthResponse(token, user.FullName, user.Email));
+        return Ok(new AuthResponse(token, user.FullName, user.Email, user.IsAdmin));
     }
 
     [HttpPost("login")]
@@ -45,6 +46,6 @@ public class AuthController(FinanceDbContext db, ITokenService tokenService) : C
         }
 
         var token = tokenService.CreateToken(user);
-        return Ok(new AuthResponse(token, user.FullName, user.Email));
+        return Ok(new AuthResponse(token, user.FullName, user.Email, user.IsAdmin));
     }
 }

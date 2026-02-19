@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111827" />
   <title>Finance Hub</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -58,6 +60,20 @@
             <ul id="txList"></ul>
           </div>
         </div>
+
+        <section id="adminPanel" class="card hidden">
+          <h3>Admin panel</h3>
+          <p>Manage users, account balances, and audit transactions.</p>
+
+          <h4>Users</h4>
+          <ul id="adminUsers"></ul>
+
+          <h4>All Accounts</h4>
+          <ul id="adminAccounts"></ul>
+
+          <h4>All Transactions</h4>
+          <ul id="adminTransactions"></ul>
+        </section>
       </section>
     </main>
   </div>
